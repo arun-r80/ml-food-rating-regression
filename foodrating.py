@@ -74,6 +74,7 @@ def foodrating(data_asset_path=None):
         rating = pd.read_csv(data_asset_path)
     else: 
         rating = pd.read_csv(file_name)
+    print("In Food Rating")
     # Modify Rate column in the Dataset, to a number, to use that as the label column ultimately.
     rating = rating[rating['rate'].notnull()]
     rating["rate"] = rating["rate"].apply(func=convert_float).astype(float)
@@ -185,4 +186,3 @@ def foodrating(data_asset_path=None):
     #
     #
 
-foodrating()

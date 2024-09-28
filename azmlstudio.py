@@ -1,6 +1,7 @@
 from azure.ai.ml import MLClient
-from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
+from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential, ClientSecretCredential
 import os
+from config.auth import service_principal as creds
 from foodrating import foodrating
 
 CONFIG_FILE     = "config.json"
@@ -10,10 +11,11 @@ def azure_ml_train_job():
      #Azure ML Studio connect
     #Connect to Azure with credentials. 
     print("Connecting to Azure workspace....")
-    try: 
-        credentials = DefaultAzureCredential()
-    except:
-        credentials=InteractiveBrowserCredential()
+    credentials = ClientSecretCredential(tenant_id=creds["tenantId"], 
+                                         client_id=creds["clientId"], 
+                                         client_secret=creds["clientSecret"], 
+                                         )
+    
     print("Azure Credentials secured....")
     print("Connect to Azure ML Studio")
     try:
