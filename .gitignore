@@ -1,6 +1,6 @@
 .venv
 __pycache__
-datasets/zomato_1.csv
+datasets/zomato*
 datasets/housing.*
 config
 
