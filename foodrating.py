@@ -3,6 +3,7 @@ A playground to test custom transformers
 """
 import joblib
 import matplotlib.pyplot
+import argparse
 import datetime
 import pandas as pd
 import numpy as np
@@ -13,9 +14,12 @@ from sklearn.preprocessing import FunctionTransformer, OrdinalEncoder, StandardS
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import root_mean_squared_error, PredictionErrorDisplay
 from sklearn.svm import SVC
 from sklearn.metrics import root_mean_squared_error
+import mlflow
+import mlflow.sklearn
+
 
 
 import matplotlib.pyplot as plt
@@ -69,11 +73,18 @@ def foodrating(data_asset_path=None):
     pd.set_option('display.width', 2000)
     pd.set_option('display.max_colwidth', None)
     pd.set_option('display.max_rows', None)
+
+    # Parse command line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", type=str)
+    parser.add_argument("--registered-model-name", type=str)
+    args = parser.parse_args()
     file_name = os.path.join( "datasets", "zomato.csv")
-    if data_asset_path is not None: 
-        rating = pd.read_csv(data_asset_path)
-    else: 
-        rating = pd.read_csv(file_name)
+    rating=pd.read_csv(args.data)
+    # if data_asset_path is not None: 
+    #     rating = pd.read_csv(data_asset_path)
+    # else: 
+    #     rating = pd.read_csv(file_name)
     print("In Food Rating")
     # Modify Rate column in the Dataset, to a number, to use that as the label column ultimately.
     rating = rating[rating['rate'].notnull()]
@@ -147,25 +158,43 @@ def foodrating(data_asset_path=None):
         {"svc__C":[0.1,100], "svc__kernel":["rbf"], "svc__gamma":[0.2,10]}
     ]
 
+    # Start Ml Flow logging
+    mlflow.set_experiment("Food Rating Regression Model")
+    mlflow.start_run()
+    mlflow.sklearn.autolog
+    
 
     # Fit the model after preprocessing
-    grd_finetune = GridSearchCV(process_rating, param_grid=param_grid, cv=2, scoring="neg_root_mean_squared_error")
+    #grd_finetune = GridSearchCV(process_rating, param_grid=param_grid, cv=2, scoring="neg_root_mean_squared_error")
     print("Starting Fit....")
-    grd_finetune.fit(X_train, y_train)
+    process_rating.fit(X_train, y_train)
     print("Finished fitting....")
 
     # Get resuls
-    validated_score = grd_finetune.best_score_
-    y_pred = grd_finetune.best_estimator_.predict(X_test)
+    #validated_score = grd_finetune.best_score_
+    #y_pred = grd_finetune.best_estimator_.predict(X_test)
+    y_pred = process_rating.predict(X_test)
     test_score = root_mean_squared_error(y_test, y_pred)
+    mlflow.log_metric("Root Mean Squared Error", test_score)
+    mlflow.sklearn.log_model(sk_model=process_rating, 
+                             registered_model_name=args.registered_model_name, 
+                             artifact_path=args.registered_model_name
+                             )
+    mlflow.sklearn.save_model(sk_model=process_rating, path=os.path.join(args.registered_model_name,"trained_model" ))
+    PredictionErrorDisplay.from_predictions(y_true=y_test, 
+                                            y_pred=y_pred, 
+                                            kind="actual_vs_predicted",
+                                            scatter_kwargs=dict(s=0.5)
+                                            )
 
     # Print the results:
-    print("Best Params are", grd_finetune.best_params_)
-    print("Best Score ", validated_score)
+    # print("Best Params are", grd_finetune.best_params_)
+    # print("Best Score ", validated_score)
     print("Test Score ", test_score)
+    mlflow.end_run()
 
     #dump estimator
-    joblib.dump(grd_finetune.best_estimator_, os.path.join("model", model_name))
+    #joblib.dump(grd_finetune.best_estimator_, os.path.join("model", model_name))
 
 
     # rating_trans_np = rating_trans_cl.fit_transform(X_train)
@@ -186,3 +215,5 @@ def foodrating(data_asset_path=None):
     #
     #
 
+if __name__ == "__main__":
+    foodrating()
